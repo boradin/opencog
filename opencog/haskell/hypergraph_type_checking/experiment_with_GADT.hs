@@ -81,6 +81,7 @@ h2 = PredicateOr (PredicateAnd (Predicate is_top) (Predicate is_car)) (Predicate
 tv3 = Evaluation h2 (List [Concept (ConceptName "BMW")])
 
 -- Writing Num instance for Atom is problematic
+-- If we make a DSL for atoms then this might be not necessary
 -- instance Num a => Num (Atom a) where
 --        (+) (Number x) (Number y) = x + y
 --        (*) (Number x) (Number y) = x * y
@@ -89,8 +90,16 @@ tv3 = Evaluation h2 (List [Concept (ConceptName "BMW")])
 --        fromInteger (Number x) = Number (fromInteger x)
 --        (-) (Number x) (Number y) = x - y
 
--- asum :: [Atom Float] -> Atom Float
--- asum anums = sum anums
+-- A caveat here is that it is diffucult to define 'unpacking' of things
+-- like ConceptAnd
+eval :: Atom a -> a -- "unpacks" an atom
+eval (List atoms) = atoms
+eval (Number n)   = n
+eval (Concept cn) = cn
+eval _            = undefined
+
+asum :: Num a => Atom [Atom a] -> Atom a -- now implementable thanks to the 'eval' function
+asum (List anums) = Number $ sum (map eval anums)
 
 -- Build a Schema
 add :: (Atom [Atom Float]) -> Atom Float
@@ -134,17 +143,28 @@ h6b = ConceptOr (ConceptAnd a xc) yc
 
 -- Simple reduct experiment (example from the wiki)
 -- 0) Atom as an Eq instance - draft implementation
-instance Eq a => Eq (Atom a) where
-        (==) (Concept (ConceptName a)) (Concept (ConceptName b)) = a == b
-        (==) (ConceptAnd a1 b1) (ConceptAnd a2 b2) = a1 == a2 && b1 == b2
-        (==) _ _ = False
+-- instance Eq a => Eq (Atom a) where
+--        (==) (Concept (ConceptName a)) (Concept (ConceptName b)) = a == b
+--        (==) (ConceptAnd a1 b1) (ConceptAnd a2 b2) = a1 == a2 && b1 == b2
+--        (==) _ _ = False
 
--- 1) And operator idempotency
+-- New instance implementation - much simpler (and complete) thanks to the 'eval' function
+instance Eq a => Eq (Atom a) where
+        (==) (ConceptAnd a1 b1) (ConceptAnd a2 b2) = a1 == a2 && b1 == b2
+        (==) (ConceptOr a1 b1) (ConceptOr a2 b2) = a1 == a2 || b1 == b2
+        (==) at1 at2 = eval at1 == eval at2
+
+-- 1) And/Or operator idempotency
 reduct :: Atom a -> Atom a
 reduct conj@(ConceptAnd a (ConceptAnd b c))
     | a == b = reduct $ ConceptAnd a c
     | a == c = reduct $ ConceptAnd b a
     | otherwise = conj
+
+reduct alt@(ConceptOr a (ConceptOr b c))
+    | a == b = reduct $ ConceptOr a c
+    | a == c = reduct $ ConceptOr b a
+    | otherwise = alt
 
 reduct norm = norm
 
