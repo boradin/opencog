@@ -80,15 +80,14 @@ h2 = PredicateOr (PredicateAnd (Predicate is_top) (Predicate is_car)) (Predicate
 -- Apply Evaluation to predicate h2
 tv3 = Evaluation h2 (List [Concept (ConceptName "BMW")])
 
--- Writing Num instance for Atom is problematic - isn't the datatype too
--- big?
+-- Writing Num instance for Atom is problematic
 -- instance Num a => Num (Atom a) where
---        (+) (Number a) (Number b) = a + b
---        (+) _ _ = 0
---        (-) (Number a) (Number b) = a - b
---        (-) _ _ = 0
---        (*) (Number a) (Number b) = a * b
---        (*) _ _ = 0
+--        (+) (Number x) (Number y) = x + y
+--        (*) (Number x) (Number y) = x * y
+--        abs (Number x) = Number (abs x)
+--        signum (Number x) = Number (signum x)
+--        fromInteger (Number x) = Number (fromInteger x)
+--        (-) (Number x) (Number y) = x - y
 
 -- asum :: [Atom Float] -> Atom Float
 -- asum anums = sum anums
