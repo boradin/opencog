@@ -1,13 +1,13 @@
 -- Attempt to using Haskell compiler to type check hypergraphs, using
 -- an extension of data call Generalized Algebraic Data Type
 
-{-#LANGUAGE GADTs #-}
+{-# LANGUAGE GADTs #-}
 
 data TV = SimpleTV Float Float
 
-data ConceptName = ConceptName String
+data ConceptName = ConceptName String deriving (Eq) -- Could be simplified to 'type ConceptName = String' perhaps?
 
-data VariableName = VariableName String
+data VariableName = VariableName String deriving (Eq) -- Could be simplified to 'type VariableName = String' perhaps?
 
 data Atom a where
     -- TV
@@ -80,6 +80,19 @@ h2 = PredicateOr (PredicateAnd (Predicate is_top) (Predicate is_car)) (Predicate
 -- Apply Evaluation to predicate h2
 tv3 = Evaluation h2 (List [Concept (ConceptName "BMW")])
 
+-- Writing Num instance for Atom is problematic - isn't the datatype too
+-- big?
+-- instance Num a => Num (Atom a) where
+--        (+) (Number a) (Number b) = a + b
+--        (+) _ _ = 0
+--        (-) (Number a) (Number b) = a - b
+--        (-) _ _ = 0
+--        (*) (Number a) (Number b) = a * b
+--        (*) _ _ = 0
+
+-- asum :: [Atom Float] -> Atom Float
+-- asum anums = sum anums
+
 -- Build a Schema
 add :: (Atom [Atom Float]) -> Atom Float
 add (List [Number x, Number y]) = Number (x + y)
@@ -120,9 +133,22 @@ yc = ConceptVariable (VariableName "Y")
 h6b = ConceptOr (ConceptAnd a xc) yc
 -- h9b = TVOr (TVGetTV h6) xc -- The type checker raises an error
 
-----------------
--- Dummy main --
-----------------
+-- Simple reduct experiment (example from the wiki)
+-- 0) Atom as an Eq instance - draft implementation
+instance Eq a => Eq (Atom a) where
+        (==) (Concept (ConceptName a)) (Concept (ConceptName b)) = a == b
+        (==) (ConceptAnd a1 b1) (ConceptAnd a2 b2) = a1 == a2 && b1 == b2
+        (==) _ _ = False
 
-main :: IO ()
-main = undefined
+-- 1) And operator idempotency
+reduct :: Atom a -> Atom a
+reduct conj@(ConceptAnd a (ConceptAnd b c))
+    | a == b = reduct $ ConceptAnd a c
+    | a == c = reduct $ ConceptAnd b a
+    | otherwise = conj
+
+reduct norm = norm
+
+-- Test: (ConceptAnd "A" (ConceptAnd "A" "B")) == (ConceptAnd "A" "B")
+testAnd = (ConceptAnd a (ConceptAnd a b))
+resultAnd = reduct testAnd == (ConceptAnd a b)
